@@ -154,7 +154,7 @@
             <div class="unit-hint">psig</div>
           </div>
           <div>
-            <label for="discharge-psi">Discharge PSI (high side)</label>
+            <label for="discharge-psi">Liquid line PSI (high side)</label>
             <input type="number" id="discharge-psi" step="0.1" placeholder="350" />
             <div class="unit-hint">psig</div>
           </div>
@@ -179,7 +179,7 @@
         <div id="results"></div>
 
         <div class="callout" style="margin-top: 48px;">
-          <strong>How it works.</strong> The tool maps your suction and discharge pressures through a Pressure-Temperature (PT) chart for the chosen refrigerant to compute saturation temperatures. Superheat = suction line temp − evap saturation. Subcool = condenser saturation − liquid line temp. Those numbers (plus your raw pressures) feed the NovaCTRL diagnostic ruleset to flag undercharge, overcharge, restrictions, compressor weakness, and floodback risk — with field-tested causes and fixes for each.
+          <strong>How it works.</strong> The tool maps your suction and discharge pressures through a Pressure-Temperature (PT) chart for the chosen refrigerant to compute saturation temperatures. Superheat = suction line temp − evap saturation. Subcool = liquid line saturation − liquid line temp. (On most systems the high-side service port reads liquid line pressure, not actual compressor discharge — they’re labeled that way here for accuracy.) Those numbers (plus your raw pressures) feed the NovaCTRL diagnostic ruleset to flag undercharge, overcharge, restrictions, compressor weakness, and floodback risk — with field-tested causes and fixes for each.
         </div>
 
         <div class="callout" style="margin-top: 16px;">
@@ -434,7 +434,7 @@
 
       let html = '<div class="stat-grid">';
       html += statHTML('Evap sat (suction)', evapSat + '°F', refrigerant + ' @ ' + sucPsi + ' psi');
-      html += statHTML('Cond sat (discharge)', condSat + '°F', refrigerant + ' @ ' + disPsi + ' psi');
+      html += statHTML('Liquid line sat', condSat + '°F', refrigerant + ' @ ' + disPsi + ' psi');
       html += statHTML('Superheat', superheat + '°F', 'target 8-14°F');
       html += statHTML('Subcooling', subcool + '°F', 'target 8-15°F');
       html += statHTML('Compression ratio', compRatio.toFixed(2), 'target 2.0-3.5');
