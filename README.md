@@ -11,6 +11,9 @@ A single-page HVAC refrigerant gauge diagnostic. Tech enters suction/discharge p
 
 > Built by [Rizvan Fazli](https://github.com/iTzN0VQ) — Mitsubishi-certified lead HVAC tech. Part of [NovaCTRL.ai](https://novactrl.ai).
 
+> **Bonus:** A full React + TypeScript port with NCI performance analysis, animated SVG pressure rings, and PDF report generation is included as a hand-off pack at [`react/HANDOFF.md`](./react/HANDOFF.md). Drop it into your React project, no backend required.
+
+
 ---
 
 ## Live tool
