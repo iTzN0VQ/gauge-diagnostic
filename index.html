@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gauge Diagnostic — NovaCTRL</title>
+  <meta name="description" content="Interactive HVAC refrigerant gauge diagnostic. Enter pressures and line temps, get superheat, subcool, sat temps, and a verdict with causes and fixes." />
+  <link rel="icon" type="image/svg+xml" href="https://novactrl.ai/assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://novactrl.ai/css/style.css" />
+  <style>
+    .gauge-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .gauge-form label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .gauge-form input, .gauge-form select {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .gauge-form input:focus, .gauge-form select:focus { border-color: var(--accent); }
+    .gauge-form .unit-hint {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-faint);
+      margin-top: 4px;
+    }
+    .gauge-actions { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+    }
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .stat-value { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700; color: var(--accent); margin-top: 4px; }
+    .stat-value.dim { color: var(--text-dim); }
+    .stat-sub { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-faint); margin-top: 2px; }
+    .verdict-card {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .verdict-card.critical { border-left-color: var(--danger); }
+    .verdict-card.warning { border-left-color: var(--accent-warm); }
+    .verdict-card.info { border-left-color: var(--success); }
+    .verdict-card h3 { margin: 0 0 12px; font-size: 1.1rem; }
+    .verdict-card.critical h3 { color: var(--danger); }
+    .verdict-card.warning h3 { color: var(--accent-warm); }
+    .verdict-card.info h3 { color: var(--success); }
+    .verdict-section { margin-top: 12px; }
+    .verdict-section strong {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .verdict-section ul { margin: 0; padding-left: 22px; }
+    .verdict-section li { margin-bottom: 4px; font-size: 0.95rem; line-height: 1.5; }
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-dim);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav">
+        <a href="https://novactrl.ai/" class="brand">
+          <span class="brand-mark">N</span>
+          <span class="brand-name">Nova<span class="ctrl">CTRL</span></span>
+        </a>
+        <button class="nav-toggle" aria-label="Toggle navigation" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+        <ul class="nav-links">
+          <li><a href="https://novactrl.ai/">Home</a></li>
+          <li><a href="https://novactrl.ai/tech-tips.html">Tech Tips</a></li>
+          <li><a href="https://novactrl.ai/cheat-sheets.html">Cheat Sheets</a></li>
+          <li><a href="https://novactrl.ai/ai-workflows.html" class="active">AI Workflows</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <article>
+      <header class="post-header">
+        <div class="container-narrow">
+          <div class="post-meta">
+            <span class="mono">/ tools / gauge</span>
+            <span>Interactive · Free · No login</span>
+          </div>
+          <h1>Gauge Diagnostic</h1>
+          <p class="subtitle">Enter your pressures and line temps. The tool computes superheat, subcool, and saturation temps, then runs the NovaCTRL diagnostic engine for a verdict with causes and fixes.</p>
+        </div>
+      </header>
+
+      <div class="container-narrow">
+
+        <form class="gauge-form" id="gauge-form" onsubmit="event.preventDefault(); runDiagnostic();">
+          <div>
+            <label for="refrigerant">Refrigerant</label>
+            <select id="refrigerant"></select>
+          </div>
+          <div>
+            <label for="suction-psi">Suction PSI (low side)</label>
+            <input type="number" id="suction-psi" step="0.1" placeholder="125" />
+            <div class="unit-hint">psig</div>
+          </div>
+          <div>
+            <label for="discharge-psi">Discharge PSI (high side)</label>
+            <input type="number" id="discharge-psi" step="0.1" placeholder="350" />
+            <div class="unit-hint">psig</div>
+          </div>
+          <div>
+            <label for="suction-temp">Suction line temp</label>
+            <input type="number" id="suction-temp" step="0.1" placeholder="55" />
+            <div class="unit-hint">°F (measured at compressor inlet)</div>
+          </div>
+          <div>
+            <label for="liquid-temp">Liquid line temp</label>
+            <input type="number" id="liquid-temp" step="0.1" placeholder="100" />
+            <div class="unit-hint">°F (measured at condenser outlet)</div>
+          </div>
+        </form>
+
+        <div class="gauge-actions">
+          <button type="button" class="btn btn-primary" onclick="runDiagnostic()">Run diagnostic →</button>
+          <button type="button" class="btn btn-ghost" onclick="loadExample()">Load example</button>
+          <button type="button" class="btn btn-ghost" onclick="clearForm()">Clear</button>
+        </div>
+
+        <div id="results"></div>
+
+        <div class="callout" style="margin-top: 48px;">
+          <strong>How it works.</strong> The tool maps your suction and discharge pressures through a Pressure-Temperature (PT) chart for the chosen refrigerant to compute saturation temperatures. Superheat = suction line temp − evap saturation. Subcool = condenser saturation − liquid line temp. Those numbers (plus your raw pressures) feed the NovaCTRL diagnostic ruleset to flag undercharge, overcharge, restrictions, compressor weakness, and floodback risk — with field-tested causes and fixes for each.
+        </div>
+
+        <div class="callout" style="margin-top: 16px;">
+          <strong>Source.</strong> This tool is open-source on GitHub at <a href="https://github.com/iTzN0VQ/gauge-diagnostic" target="_blank" rel="noopener">github.com/iTzN0VQ/gauge-diagnostic</a> — MIT licensed. Fork it, embed it, contribute fixes.
+        </div>
+
+        <div style="padding-bottom: 80px; margin-top: 24px;">
+          <a href="https://novactrl.ai/ai-workflows.html" class="btn btn-ghost">← AI Workflows</a>
+        </div>
+      </div>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-row">
+        <div class="mono">© <span id="year">2026</span> NovaCTRL · Rizvan Fazli · built in the field</div>
+        <div class="footer-links">
+          <a href="https://novactrl.ai/tech-tips.html">Tips</a>
+          <a href="https://novactrl.ai/cheat-sheets.html">Sheets</a>
+          <a href="https://novactrl.ai/ai-workflows.html">Workflows</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    window.NOVABOT_WORKER_URL = 'https://novabot.demonkiller2003.workers.dev';
+  </script>
+  <script src="https://novactrl.ai/js/novabot.js" defer></script>
+
+  <script>
+    // ────────────────────────────────────────────
+    // PT CHARTS — 16 refrigerants, 525 data points
+    // Extracted from NovaCTRL master database
+    // ────────────────────────────────────────────
+    const PT_CHARTS = {"R-410A":[{"psi":1,"tempF":-60},{"psi":4,"tempF":-50},{"psi":10,"tempF":-40},{"psi":17,"tempF":-30},{"psi":26,"tempF":-20},{"psi":36,"tempF":-10},{"psi":48,"tempF":0},{"psi":55,"tempF":5},{"psi":62,"tempF":10},{"psi":70,"tempF":15},{"psi":79,"tempF":20},{"psi":88,"tempF":25},{"psi":98,"tempF":30},{"psi":108,"tempF":35},{"psi":119,"tempF":40},{"psi":131,"tempF":45},{"psi":143,"tempF":50},{"psi":157,"tempF":55},{"psi":171,"tempF":60},{"psi":186,"tempF":65},{"psi":202,"tempF":70},{"psi":218,"tempF":75},{"psi":236,"tempF":80},{"psi":274,"tempF":90},{"psi":295,"tempF":95},{"psi":317,"tempF":100},{"psi":340,"tempF":105},{"psi":364,"tempF":110},{"psi":390,"tempF":115},{"psi":416,"tempF":120},{"psi":445,"tempF":125},{"psi":474,"tempF":130},{"psi":505,"tempF":135},{"psi":538,"tempF":140},{"psi":572,"tempF":145},{"psi":608,"tempF":150}],"R-22":[{"psi":1,"tempF":-40},{"psi":5,"tempF":-30},{"psi":10,"tempF":-20},{"psi":17,"tempF":-10},{"psi":24,"tempF":0},{"psi":33,"tempF":10},{"psi":43,"tempF":20},{"psi":49,"tempF":25},{"psi":55,"tempF":30},{"psi":62,"tempF":35},{"psi":69,"tempF":40},{"psi":76,"tempF":45},{"psi":84,"tempF":50},{"psi":93,"tempF":55},{"psi":102,"tempF":60},{"psi":111,"tempF":65},{"psi":121,"tempF":70},{"psi":132,"tempF":75},{"psi":144,"tempF":80},{"psi":156,"tempF":85},{"psi":168,"tempF":90},{"psi":182,"tempF":95},{"psi":196,"tempF":100},{"psi":211,"tempF":105},{"psi":226,"tempF":110},{"psi":243,"tempF":115},{"psi":260,"tempF":120},{"psi":278,"tempF":125},{"psi":297,"tempF":130},{"psi":317,"tempF":135},{"psi":337,"tempF":140},{"psi":359,"tempF":145},{"psi":382,"tempF":150}],"R-32":[{"psi":5,"tempF":-50},{"psi":8,"tempF":-45},{"psi":11,"tempF":-40},{"psi":14,"tempF":-35},{"psi":18,"tempF":-30},{"psi":23,"tempF":-25},{"psi":28,"tempF":-20},{"psi":33,"tempF":-15},{"psi":39,"tempF":-10},{"psi":46,"tempF":-5},{"psi":53,"tempF":0},{"psi":61,"tempF":5},{"psi":70,"tempF":10},{"psi":80,"tempF":15},{"psi":90,"tempF":20},{"psi":99,"tempF":30},{"psi":110,"tempF":35},{"psi":121,"tempF":40},{"psi":133,"tempF":45},{"psi":146,"tempF":50},{"psi":160,"tempF":55},{"psi":174,"tempF":60},{"psi":190,"tempF":65},{"psi":206,"tempF":70},{"psi":223,"tempF":75},{"psi":242,"tempF":80},{"psi":261,"tempF":85},{"psi":281,"tempF":90},{"psi":303,"tempF":95},{"psi":326,"tempF":100},{"psi":350,"tempF":105},{"psi":375,"tempF":110},{"psi":402,"tempF":115},{"psi":430,"tempF":120},{"psi":460,"tempF":125},{"psi":490,"tempF":130},{"psi":522,"tempF":135},{"psi":556,"tempF":140},{"psi":591,"tempF":145},{"psi":629,"tempF":150}],"R-454B":[{"psi":9,"tempF":-40},{"psi":15,"tempF":-30},{"psi":23,"tempF":-20},{"psi":32,"tempF":-10},{"psi":43,"tempF":0},{"psi":56,"tempF":10},{"psi":71,"tempF":20},{"psi":88,"tempF":30},{"psi":108,"tempF":40},{"psi":130,"tempF":50},{"psi":155,"tempF":60},{"psi":184,"tempF":70},{"psi":216,"tempF":80},{"psi":252,"tempF":90},{"psi":292,"tempF":100},{"psi":314,"tempF":105},{"psi":336,"tempF":110},{"psi":361,"tempF":115},{"psi":386,"tempF":120},{"psi":412,"tempF":125},{"psi":441,"tempF":130},{"psi":470,"tempF":135},{"psi":501,"tempF":140},{"psi":534,"tempF":145},{"psi":568,"tempF":150}],"R-407C":[{"psi":2,"tempF":-30},{"psi":7,"tempF":-20},{"psi":12,"tempF":-10},{"psi":19,"tempF":0},{"psi":28,"tempF":10},{"psi":38,"tempF":20},{"psi":50,"tempF":30},{"psi":63,"tempF":40},{"psi":79,"tempF":50},{"psi":97,"tempF":60},{"psi":117,"tempF":70},{"psi":129,"tempF":75},{"psi":141,"tempF":80},{"psi":153,"tempF":85},{"psi":167,"tempF":90},{"psi":181,"tempF":95},{"psi":196,"tempF":100},{"psi":212,"tempF":105},{"psi":229,"tempF":110},{"psi":247,"tempF":115},{"psi":266,"tempF":120},{"psi":286,"tempF":125},{"psi":307,"tempF":130},{"psi":329,"tempF":135},{"psi":352,"tempF":140},{"psi":377,"tempF":145},{"psi":403,"tempF":150}],"R-134a":[{"psi":0,"tempF":-15},{"psi":2,"tempF":-10},{"psi":4,"tempF":-5},{"psi":7,"tempF":0},{"psi":9,"tempF":5},{"psi":12,"tempF":10},{"psi":15,"tempF":15},{"psi":18,"tempF":20},{"psi":22,"tempF":25},{"psi":26,"tempF":30},{"psi":30,"tempF":35},{"psi":35,"tempF":40},{"psi":40,"tempF":45},{"psi":45,"tempF":50},{"psi":51,"tempF":55},{"psi":57,"tempF":60},{"psi":64,"tempF":65},{"psi":71,"tempF":70},{"psi":79,"tempF":75},{"psi":87,"tempF":80},{"psi":95,"tempF":85},{"psi":104,"tempF":90},{"psi":114,"tempF":95},{"psi":124,"tempF":100},{"psi":135,"tempF":105},{"psi":146,"tempF":110},{"psi":158,"tempF":115},{"psi":171,"tempF":120},{"psi":185,"tempF":125},{"psi":199,"tempF":130},{"psi":214,"tempF":135},{"psi":229,"tempF":140},{"psi":246,"tempF":145},{"psi":263,"tempF":150}],"R-404A":[{"psi":4,"tempF":-40},{"psi":10,"tempF":-30},{"psi":16,"tempF":-20},{"psi":24,"tempF":-10},{"psi":33,"tempF":0},{"psi":43,"tempF":10},{"psi":55,"tempF":20},{"psi":69,"tempF":30},{"psi":85,"tempF":40},{"psi":104,"tempF":50},{"psi":124,"tempF":60},{"psi":147,"tempF":70},{"psi":160,"tempF":75},{"psi":173,"tempF":80},{"psi":188,"tempF":85},{"psi":202,"tempF":90},{"psi":218,"tempF":95},{"psi":234,"tempF":100},{"psi":252,"tempF":105},{"psi":270,"tempF":110},{"psi":290,"tempF":115},{"psi":310,"tempF":120},{"psi":331,"tempF":125},{"psi":354,"tempF":130},{"psi":377,"tempF":135},{"psi":402,"tempF":140},{"psi":428,"tempF":145},{"psi":455,"tempF":150}],"R-290":[{"psi":2,"tempF":-40},{"psi":5,"tempF":-30},{"psi":9,"tempF":-20},{"psi":14,"tempF":-10},{"psi":21,"tempF":0},{"psi":25,"tempF":5},{"psi":29,"tempF":10},{"psi":34,"tempF":15},{"psi":39,"tempF":20},{"psi":45,"tempF":25},{"psi":52,"tempF":30},{"psi":59,"tempF":35},{"psi":67,"tempF":40},{"psi":76,"tempF":45},{"psi":85,"tempF":50},{"psi":95,"tempF":55},{"psi":106,"tempF":60},{"psi":118,"tempF":65},{"psi":131,"tempF":70},{"psi":144,"tempF":75},{"psi":159,"tempF":80},{"psi":174,"tempF":85},{"psi":190,"tempF":90},{"psi":208,"tempF":95},{"psi":226,"tempF":100},{"psi":246,"tempF":105},{"psi":267,"tempF":110},{"psi":289,"tempF":115},{"psi":312,"tempF":120},{"psi":337,"tempF":125},{"psi":363,"tempF":130},{"psi":390,"tempF":135},{"psi":419,"tempF":140},{"psi":449,"tempF":145},{"psi":481,"tempF":150}],"R-438A":[{"psi":1,"tempF":-40},{"psi":4,"tempF":-30},{"psi":8,"tempF":-20},{"psi":14,"tempF":-10},{"psi":21,"tempF":0},{"psi":25,"tempF":5},{"psi":30,"tempF":10},{"psi":35,"tempF":15},{"psi":40,"tempF":20},{"psi":46,"tempF":25},{"psi":52,"tempF":30},{"psi":59,"tempF":35},{"psi":67,"tempF":40},{"psi":75,"tempF":45},{"psi":84,"tempF":50},{"psi":93,"tempF":55},{"psi":103,"tempF":60},{"psi":113,"tempF":65},{"psi":124,"tempF":70},{"psi":136,"tempF":75},{"psi":149,"tempF":80},{"psi":163,"tempF":85},{"psi":177,"tempF":90},{"psi":193,"tempF":95},{"psi":209,"tempF":100},{"psi":226,"tempF":105},{"psi":244,"tempF":110},{"psi":263,"tempF":115},{"psi":283,"tempF":120},{"psi":304,"tempF":125},{"psi":327,"tempF":130},{"psi":350,"tempF":135},{"psi":375,"tempF":140},{"psi":401,"tempF":145},{"psi":428,"tempF":150}],"R-507A":[{"psi":4,"tempF":-40},{"psi":10,"tempF":-30},{"psi":17,"tempF":-20},{"psi":25,"tempF":-10},{"psi":35,"tempF":0},{"psi":40,"tempF":5},{"psi":46,"tempF":10},{"psi":53,"tempF":15},{"psi":60,"tempF":20},{"psi":68,"tempF":25},{"psi":76,"tempF":30},{"psi":85,"tempF":35},{"psi":95,"tempF":40},{"psi":106,"tempF":45},{"psi":117,"tempF":50},{"psi":130,"tempF":55},{"psi":143,"tempF":60},{"psi":157,"tempF":65},{"psi":172,"tempF":70},{"psi":188,"tempF":75},{"psi":205,"tempF":80},{"psi":223,"tempF":85},{"psi":242,"tempF":90},{"psi":262,"tempF":95},{"psi":283,"tempF":100},{"psi":306,"tempF":105},{"psi":330,"tempF":110},{"psi":355,"tempF":115},{"psi":381,"tempF":120},{"psi":409,"tempF":125},{"psi":438,"tempF":130},{"psi":469,"tempF":135},{"psi":501,"tempF":140},{"psi":535,"tempF":145},{"psi":571,"tempF":150}],"R-448A":[{"psi":3,"tempF":-40},{"psi":7,"tempF":-30},{"psi":13,"tempF":-20},{"psi":20,"tempF":-10},{"psi":29,"tempF":0},{"psi":34,"tempF":5},{"psi":39,"tempF":10},{"psi":45,"tempF":15},{"psi":51,"tempF":20},{"psi":58,"tempF":25},{"psi":66,"tempF":30},{"psi":74,"tempF":35},{"psi":83,"tempF":40},{"psi":93,"tempF":45},{"psi":103,"tempF":50},{"psi":114,"tempF":55},{"psi":127,"tempF":60},{"psi":140,"tempF":65},{"psi":154,"tempF":70},{"psi":169,"tempF":75},{"psi":185,"tempF":80},{"psi":202,"tempF":85},{"psi":220,"tempF":90},{"psi":239,"tempF":95},{"psi":259,"tempF":100},{"psi":281,"tempF":105},{"psi":304,"tempF":110},{"psi":328,"tempF":115},{"psi":354,"tempF":120},{"psi":381,"tempF":125},{"psi":409,"tempF":130},{"psi":440,"tempF":135},{"psi":472,"tempF":140},{"psi":505,"tempF":145},{"psi":541,"tempF":150}],"R-449A":[{"psi":3,"tempF":-40},{"psi":7,"tempF":-30},{"psi":13,"tempF":-20},{"psi":20,"tempF":-10},{"psi":28,"tempF":0},{"psi":33,"tempF":5},{"psi":38,"tempF":10},{"psi":44,"tempF":15},{"psi":51,"tempF":20},{"psi":58,"tempF":25},{"psi":65,"tempF":30},{"psi":73,"tempF":35},{"psi":82,"tempF":40},{"psi":92,"tempF":45},{"psi":103,"tempF":50},{"psi":114,"tempF":55},{"psi":126,"tempF":60},{"psi":139,"tempF":65},{"psi":153,"tempF":70},{"psi":168,"tempF":75},{"psi":184,"tempF":80},{"psi":201,"tempF":85},{"psi":219,"tempF":90},{"psi":238,"tempF":95},{"psi":258,"tempF":100},{"psi":280,"tempF":105},{"psi":303,"tempF":110},{"psi":328,"tempF":115},{"psi":354,"tempF":120},{"psi":381,"tempF":125},{"psi":410,"tempF":130},{"psi":441,"tempF":135},{"psi":473,"tempF":140},{"psi":507,"tempF":145},{"psi":543,"tempF":150}],"R-513A":[{"psi":0,"tempF":-20},{"psi":2,"tempF":-10},{"psi":5,"tempF":0},{"psi":7,"tempF":5},{"psi":10,"tempF":10},{"psi":13,"tempF":15},{"psi":16,"tempF":20},{"psi":20,"tempF":25},{"psi":24,"tempF":30},{"psi":28,"tempF":35},{"psi":33,"tempF":40},{"psi":38,"tempF":45},{"psi":44,"tempF":50},{"psi":50,"tempF":55},{"psi":57,"tempF":60},{"psi":64,"tempF":65},{"psi":72,"tempF":70},{"psi":80,"tempF":75},{"psi":89,"tempF":80},{"psi":99,"tempF":85},{"psi":110,"tempF":90},{"psi":121,"tempF":95},{"psi":133,"tempF":100},{"psi":146,"tempF":105},{"psi":159,"tempF":110},{"psi":174,"tempF":115},{"psi":189,"tempF":120},{"psi":206,"tempF":125},{"psi":223,"tempF":130},{"psi":241,"tempF":135},{"psi":260,"tempF":140},{"psi":281,"tempF":145},{"psi":302,"tempF":150}],"R-1234yf":[{"psi":0,"tempF":-20},{"psi":2,"tempF":-10},{"psi":4,"tempF":0},{"psi":6,"tempF":5},{"psi":8,"tempF":10},{"psi":11,"tempF":15},{"psi":14,"tempF":20},{"psi":17,"tempF":25},{"psi":21,"tempF":30},{"psi":25,"tempF":35},{"psi":30,"tempF":40},{"psi":35,"tempF":45},{"psi":40,"tempF":50},{"psi":46,"tempF":55},{"psi":52,"tempF":60},{"psi":59,"tempF":65},{"psi":67,"tempF":70},{"psi":75,"tempF":75},{"psi":84,"tempF":80},{"psi":93,"tempF":85},{"psi":103,"tempF":90},{"psi":114,"tempF":95},{"psi":126,"tempF":100},{"psi":138,"tempF":105},{"psi":151,"tempF":110},{"psi":165,"tempF":115},{"psi":180,"tempF":120},{"psi":196,"tempF":125},{"psi":213,"tempF":130},{"psi":231,"tempF":135},{"psi":250,"tempF":140},{"psi":270,"tempF":145},{"psi":291,"tempF":150}],"R-1234ze(E)":[{"psi":0,"tempF":-20},{"psi":1,"tempF":-10},{"psi":2,"tempF":0},{"psi":3,"tempF":5},{"psi":5,"tempF":10},{"psi":6,"tempF":15},{"psi":8,"tempF":20},{"psi":10,"tempF":25},{"psi":13,"tempF":30},{"psi":15,"tempF":35},{"psi":18,"tempF":40},{"psi":22,"tempF":45},{"psi":25,"tempF":50},{"psi":29,"tempF":55},{"psi":34,"tempF":60},{"psi":39,"tempF":65},{"psi":44,"tempF":70},{"psi":50,"tempF":75},{"psi":56,"tempF":80},{"psi":63,"tempF":85},{"psi":70,"tempF":90},{"psi":78,"tempF":95},{"psi":87,"tempF":100},{"psi":96,"tempF":105},{"psi":106,"tempF":110},{"psi":117,"tempF":115},{"psi":128,"tempF":120},{"psi":141,"tempF":125},{"psi":154,"tempF":130},{"psi":168,"tempF":135},{"psi":183,"tempF":140},{"psi":199,"tempF":145},{"psi":216,"tempF":150}],"R-123":[{"psi":-13,"tempF":-40},{"psi":-12,"tempF":-30},{"psi":-11,"tempF":-20},{"psi":-10,"tempF":-10},{"psi":-9,"tempF":0},{"psi":-8,"tempF":10},{"psi":-6,"tempF":20},{"psi":-5,"tempF":30},{"psi":-3,"tempF":40},{"psi":-1,"tempF":50},{"psi":1,"tempF":60},{"psi":3,"tempF":70},{"psi":5,"tempF":75},{"psi":6,"tempF":80},{"psi":8,"tempF":85},{"psi":10,"tempF":90},{"psi":12,"tempF":95},{"psi":14,"tempF":100},{"psi":17,"tempF":105},{"psi":20,"tempF":110},{"psi":23,"tempF":115},{"psi":26,"tempF":120},{"psi":30,"tempF":125},{"psi":34,"tempF":130},{"psi":38,"tempF":135},{"psi":43,"tempF":140},{"psi":48,"tempF":145},{"psi":53,"tempF":150}]};
+
+    function getSatTemp(refrigerant, psi) {
+      const chart = PT_CHARTS[refrigerant];
+      if (!chart || !chart.length) return 0;
+      if (psi <= chart[0].psi) return chart[0].tempF;
+      if (psi >= chart[chart.length - 1].psi) return chart[chart.length - 1].tempF;
+      for (let i = 0; i < chart.length - 1; i++) {
+        if (psi >= chart[i].psi && psi <= chart[i + 1].psi) {
+          const ratio = (psi - chart[i].psi) / (chart[i + 1].psi - chart[i].psi);
+          return Math.round((chart[i].tempF + ratio * (chart[i + 1].tempF - chart[i].tempF)) * 10) / 10;
+        }
+      }
+      return 0;
+    }
+
+    // ────────────────────────────────────────────
+    // DIAGNOSTIC ENGINE — port of NovaCTRL diagnoseFromGauges()
+    // ────────────────────────────────────────────
+    function diagnoseFromGauges(superheat, subcooling, suctionPsi, dischargePsi) {
+      const hints = [];
+
+      if (superheat > 15 && subcooling < 8) {
+        hints.push({
+          condition: 'High Superheat + Low Subcooling → Low Refrigerant Charge',
+          causes: [
+            'Refrigerant leak at flare connections, service valves, or Schrader cores',
+            'Undercharge from original installation — not enough refrigerant per line set length',
+            'Slow leak at indoor coil U-bends or brazed joints (common on units >5 years old)',
+            'Leaking reversing valve allowing refrigerant to bypass (heat pump systems)',
+          ],
+          fixes: [
+            'Perform nitrogen pressure test at 350-400 PSI — isolate indoor/outdoor to locate leak side',
+            'Use electronic leak detector at all flare fittings, Schrader caps, and brazed joints',
+            'Soap bubble test all accessible connections — focus on field-made flares',
+            'Once leak is repaired: evacuate to 500 microns, hold 15 min, then charge by weight per nameplate',
+            'For minisplits: add 0.6 oz/ft of R-410A for each foot of line set beyond factory length (typically 25 ft)',
+            'Verify subcooling target of 10-15°F at condenser outlet after recharge',
+          ],
+          severity: 'critical',
+        });
+      }
+
+      if (superheat < 5 && subcooling > 18) {
+        hints.push({
+          condition: 'Low Superheat + High Subcooling → Overcharged System',
+          causes: [
+            'Excess refrigerant added during service — tech did not weigh charge properly',
+            'Non-condensables (air/nitrogen) trapped in system from improper evacuation',
+            'Line set shorter than factory charge allows — excess refrigerant has nowhere to go',
+            'Condenser fan running at full speed in cool weather, causing liquid backup',
+          ],
+          fixes: [
+            'Recover refrigerant in small increments (2-4 oz) while monitoring subcooling',
+            'Target subcooling of 10-15°F — stop recovering when you hit the range',
+            'If non-condensables suspected: recover all refrigerant, replace filter drier, pull deep vacuum (<500 microns), recharge by weight',
+            'For short line sets (<15 ft): some manufacturers specify reduced charge — check installation manual',
+            'On Mitsubishi MXZ multi-zone: verify each indoor unit is calling — idle heads can cause false overcharge readings',
+          ],
+          severity: 'warning',
+        });
+      }
+
+      if (superheat > 15 && subcooling > 15) {
+        hints.push({
+          condition: 'High Superheat + High Subcooling → Restriction in Refrigerant Circuit',
+          causes: [
+            'Clogged filter drier — most common cause. Moisture or debris from brazing without nitrogen',
+            'Kinked or crushed liquid line (check behind walls, at bends, and unit entry)',
+            'Partially stuck TXV/EEV — valve not opening fully',
+            'Dirty evaporator coil or clogged air filter reducing airflow',
+            'Ice formation on evap coil from low airflow',
+          ],
+          fixes: [
+            'Check temp drop across filter drier — more than 3°F = restricted, replace it',
+            'Inspect entire liquid line for kinks, especially at wall penetrations',
+            'For TXV: check bulb placement and insulation. Tap valve body — if superheat changes, valve is sticking',
+            'For minisplit EEV: check step count in service mode. 0 or max steps = stuck',
+            'Clean or replace air filter. Wash evap coil if visibly dirty. Verify blower ~400 CFM/ton',
+            'After clearing: recover, replace filter drier, evacuate, recharge by weight',
+          ],
+          severity: 'critical',
+        });
+      }
+
+      if (suctionPsi < 50 && superheat > 20) {
+        hints.push({
+          condition: 'Very Low Suction Pressure + Very High Superheat → Severe Undercharge or Compressor Issue',
+          causes: [
+            'Major refrigerant leak — system has lost significant charge',
+            'Compressor suction valve damage — not pumping properly',
+            'Severe restriction before evaporator',
+            'On inverter minisplits: compressor running at minimum speed due to fault',
+          ],
+          fixes: [
+            'Check compressor amp draw vs RLA — low amps + low suction = lost charge or bad compressor',
+            'Measure compressor winding resistance (1-3Ω between terminals for most minisplits)',
+            'If charge is adequate but suction stays low: replace compressor',
+            'On Mitsubishi: enter test run mode to force higher speed and compare',
+          ],
+          severity: 'critical',
+        });
+      }
+
+      if (dischargePsi > 400) {
+        hints.push({
+          condition: 'Very High Discharge Pressure → Condenser Problem or Overcharge',
+          causes: [
+            'Dirty condenser coil — dust, cottonwood, pet hair blocking airflow',
+            'Condenser fan motor failure or running at low speed',
+            'Recirculating hot air — unit too close to wall or in confined space',
+            'Overcharge pushing liquid into condenser',
+            'Non-condensables (air) in system raising head abnormally',
+          ],
+          fixes: [
+            'Clean condenser coil with garden hose (from inside out) or coil cleaner',
+            'Check condenser fan motor — spins freely? Correct rotation? Capacitor OK?',
+            'Ensure clearance around outdoor unit (12" sides, 48" top)',
+            'If overcharge suspected: recover while monitoring subcool to 10-15°F',
+            'High head on 95°F+ days may be normal — compare to manufacturer chart',
+          ],
+          severity: 'critical',
+        });
+      }
+
+      if (dischargePsi > 0 && dischargePsi < 150 && suctionPsi > 0) {
+        hints.push({
+          condition: 'Low Discharge Pressure → Compressor Weakness or Low Charge',
+          causes: [
+            'Weak compressor — internal bypass or worn valves',
+            'Significant refrigerant loss',
+            'Reversing valve stuck in mid-position (heat pumps)',
+          ],
+          fixes: [
+            'Compare amp draw to RLA — low amps = weak compressor',
+            'Pump-down test: close liquid line, run unit. Suction should pull to 0 PSI. Stalls above 10 PSI = bad valves',
+            'For heat pumps: apply 24V to reversing valve solenoid, listen for click',
+          ],
+          severity: 'warning',
+        });
+      }
+
+      if (superheat >= 5 && superheat <= 15 && subcooling >= 8 && subcooling <= 15) {
+        hints.push({
+          condition: 'Readings Within Normal Range — System Properly Charged',
+          causes: [
+            'Superheat and subcooling both in target range',
+            'Refrigerant charge appears correct for current conditions',
+          ],
+          fixes: [
+            'Verify temp split across evaporator: target 15-20°F in cooling',
+            'Check amp draw within nameplate RLA',
+            'Monitor pressures 10-15 min to confirm stability',
+            'Log readings for future trending',
+          ],
+          severity: 'info',
+        });
+      }
+
+      if (superheat < 3 && superheat >= 0) {
+        hints.push({
+          condition: 'Near-Zero Superheat → Liquid Floodback Risk',
+          causes: [
+            'TXV/EEV stuck open — too much refrigerant into evaporator',
+            'Overcharge combined with low ambient',
+            'Evaporator fan not running or too slow',
+          ],
+          fixes: [
+            '⚠️ DANGER: Liquid refrigerant returning to compressor causes slugging — destroys it',
+            'Check EEV/TXV immediately — on minisplits, verify EEV step count is not at max',
+            'Verify indoor blower at correct speed. Dirty wheel or bad motor = reduced airflow',
+            'If overcharge: carefully recover while monitoring superheat — target 8-12°F',
+          ],
+          severity: 'critical',
+        });
+      }
+
+      return hints;
+    }
+
+    // ────────────────────────────────────────────
+    // UI
+    // ────────────────────────────────────────────
+    function populateRefrigerants() {
+      const sel = document.getElementById('refrigerant');
+      Object.keys(PT_CHARTS).forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        if (r === 'R-410A') opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    function runDiagnostic() {
+      const refrigerant = document.getElementById('refrigerant').value;
+      const sucPsi = parseFloat(document.getElementById('suction-psi').value);
+      const disPsi = parseFloat(document.getElementById('discharge-psi').value);
+      const sucTemp = parseFloat(document.getElementById('suction-temp').value);
+      const liqTemp = parseFloat(document.getElementById('liquid-temp').value);
+
+      const out = document.getElementById('results');
+      if (isNaN(sucPsi) || isNaN(disPsi) || isNaN(sucTemp) || isNaN(liqTemp)) {
+        out.innerHTML = '<div class="empty-state">Enter all four readings to run the diagnostic.</div>';
+        return;
+      }
+
+      const evapSat = getSatTemp(refrigerant, sucPsi);
+      const condSat = getSatTemp(refrigerant, disPsi);
+      const superheat = Math.round((sucTemp - evapSat) * 10) / 10;
+      const subcool = Math.round((condSat - liqTemp) * 10) / 10;
+      const compRatio = sucPsi > 0 ? Math.round(((disPsi + 14.7) / (sucPsi + 14.7)) * 100) / 100 : 0;
+
+      const hints = diagnoseFromGauges(superheat, subcool, sucPsi, disPsi);
+
+      let html = '<div class="stat-grid">';
+      html += statHTML('Evap sat (suction)', evapSat + '°F', refrigerant + ' @ ' + sucPsi + ' psi');
+      html += statHTML('Cond sat (discharge)', condSat + '°F', refrigerant + ' @ ' + disPsi + ' psi');
+      html += statHTML('Superheat', superheat + '°F', 'target 8-14°F');
+      html += statHTML('Subcooling', subcool + '°F', 'target 8-15°F');
+      html += statHTML('Compression ratio', compRatio.toFixed(2), 'target 2.0-3.5');
+      html += '</div>';
+
+      if (hints.length === 0) {
+        html += '<div class="empty-state">No specific diagnostic flagged — readings outside the engine\'s rule set. Compare to manufacturer charging chart and ambient conditions.</div>';
+      } else {
+        hints.forEach(h => {
+          html += '<div class="verdict-card ' + h.severity + '">';
+          html += '  <h3>' + escapeHTML(h.condition) + '</h3>';
+          html += '  <div class="verdict-section"><strong>Likely causes</strong><ul>';
+          h.causes.forEach(c => html += '<li>' + escapeHTML(c) + '</li>');
+          html += '  </ul></div>';
+          html += '  <div class="verdict-section"><strong>What to do</strong><ul>';
+          h.fixes.forEach(f => html += '<li>' + escapeHTML(f) + '</li>');
+          html += '  </ul></div>';
+          html += '</div>';
+        });
+      }
+      out.innerHTML = html;
+      out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function statHTML(label, value, sub) {
+      return '<div class="stat"><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div><div class="stat-sub">' + sub + '</div></div>';
+    }
+
+    function escapeHTML(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    function loadExample() {
+      document.getElementById('refrigerant').value = 'R-410A';
+      document.getElementById('suction-psi').value = '125';
+      document.getElementById('discharge-psi').value = '385';
+      document.getElementById('suction-temp').value = '52';
+      document.getElementById('liquid-temp').value = '102';
+      runDiagnostic();
+    }
+
+    function clearForm() {
+      ['suction-psi','discharge-psi','suction-temp','liquid-temp'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('results').innerHTML = '';
+    }
+
+    populateRefrigerants();
+  </script>
+</body>
+</html>
